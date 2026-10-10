@@ -17,6 +17,8 @@
   const canvas = $("board");
   const ctx = canvas.getContext("2d");
   const pixelRatio = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2);
+  const boardBackground = new Image();
+  boardBackground.src = "assets/fondo-juego.png";
   canvas.width = WIDTH * CELL * pixelRatio;
   canvas.height = HEIGHT * CELL * pixelRatio;
   ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
@@ -520,6 +522,11 @@
   }
 
   function drawFloor(time) {
+    if (boardBackground.complete && boardBackground.naturalWidth > 0) {
+      ctx.drawImage(boardBackground, 0, 0, WIDTH * CELL, HEIGHT * CELL);
+      return;
+    }
+
     ctx.fillStyle = custom.colorMapa || "#1d2648";
     ctx.fillRect(0, 0, WIDTH * CELL, HEIGHT * CELL);
     const light = ctx.createRadialGradient(WIDTH * CELL * .72, 70, 10, WIDTH * CELL * .65, 170, WIDTH * CELL * .65);
@@ -564,29 +571,81 @@
     ctx.globalAlpha = 1;
   }
 
+  function drawRock(left, top) {
+    ctx.save();
+    ctx.translate(left, top);
+    ctx.beginPath();
+    ctx.moveTo(4, 18);
+    ctx.lineTo(10, 5);
+    ctx.lineTo(19, 2);
+    ctx.lineTo(31, 7);
+    ctx.lineTo(37, 20);
+    ctx.lineTo(32, 34);
+    ctx.lineTo(17, 38);
+    ctx.lineTo(7, 32);
+    ctx.closePath();
+    ctx.fillStyle = "#8d8d8d";
+    ctx.fill();
+    ctx.strokeStyle = "#434343";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(12, 11);
+    ctx.lineTo(19, 15);
+    ctx.lineTo(25, 11);
+    ctx.moveTo(9, 22);
+    ctx.lineTo(20, 20);
+    ctx.moveTo(15, 27);
+    ctx.lineTo(27, 29);
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function drawWalls() {
     for (const wall of WALLS) {
       const [x, y] = wall.split(",").map(Number);
-      const left = x * CELL + 6;
-      const top = y * CELL + 4;
-      ctx.fillStyle = "#0e1835";
-      rounded(left + 3, top + 6, 42, 43, 8);
-      ctx.fillStyle = "#ff8266";
-      rounded(left, top, 42, 42, 8);
-      ctx.strokeStyle = "#122042";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      ctx.fillStyle = "#ffc09b";
-      rounded(left + 5, top + 5, 32, 14, 4);
-      ctx.fillStyle = "#ffe35b";
-      rounded(left + 9, top + 26, 24, 7, 2);
-      ctx.fillStyle = "#1b2140";
-      for (const offset of [8, 34]) {
-        ctx.beginPath();
-        ctx.arc(left + offset, top + 35, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      drawRock(x * CELL + 6, y * CELL + 4);
     }
+  }
+
+  function drawSeaStar(cx, cy, radius, rotation) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation);
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
+      const pointRadius = i % 2 === 0 ? radius : radius * 0.46;
+      const x = Math.cos(angle) * pointRadius;
+      const y = Math.sin(angle) * pointRadius;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = custom.colorEstrellas || "#f5b04a";
+    ctx.fill();
+    ctx.strokeStyle = "#8b4c29";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.fill();
+
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2 + Math.PI / 10;
+      const x = Math.cos(angle) * radius * 0.18;
+      const y = Math.sin(angle) * radius * 0.18;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.fill();
+    ctx.restore();
   }
 
   function drawCollectible(star, index, time) {
@@ -594,23 +653,15 @@
     const cy = star.y * CELL + CELL / 2 + Math.sin(time / 360 + index) * 2;
     const pulse = 1 + Math.sin(time / 300 + index * 2) * .08;
     ctx.save();
-    ctx.shadowColor = custom.colorEstrellas || "#ffe35b";
+    ctx.shadowColor = custom.colorEstrellas || "#f5b04a";
     ctx.shadowBlur = 20;
-    ctx.fillStyle = "#ffe35b33";
+    ctx.fillStyle = "rgba(245, 176, 74, 0.18)";
     ctx.beginPath(); ctx.arc(cx, cy, 23 * pulse, 0, Math.PI * 2); ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = "#ffe35b88";
+    ctx.strokeStyle = "rgba(245, 176, 74, 0.75)";
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(cx, cy, 19 * pulse, 0, Math.PI * 2); ctx.stroke();
-    ctx.translate(cx, cy);
-    ctx.rotate(Math.sin(time / 600 + index) * .14);
-    ctx.fillStyle = custom.colorEstrellas || "#ffe35b";
-    drawStar(0, 0, 5, 15 * pulse, 6.5 * pulse);
-    ctx.strokeStyle = "#3d2e4b";
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-    ctx.fillStyle = "#fff8d7";
-    drawStar(-3, -4, 4, 3, 1.2);
+    drawSeaStar(cx, cy, 13 * pulse, Math.sin(time / 600 + index) * .18);
     ctx.restore();
   }
 
@@ -626,8 +677,9 @@
     const cy = sprite.y * CELL + CELL / 2 + Math.sin(time / 250 + index) * 1.5;
     const color = playerColor(Number(player.color) || 0);
 
-    ctx.fillStyle = "#08132999";
-    ctx.beginPath(); ctx.ellipse(cx, cy + 19, 19, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(8, 19, 41, 0.5)";
+    ctx.beginPath(); ctx.ellipse(cx, cy + 18, 18, 5, 0, 0, Math.PI * 2); ctx.fill();
+
     if (uid === state.uid) {
       ctx.save();
       ctx.strokeStyle = "#ffe35b";
@@ -636,31 +688,60 @@
       ctx.beginPath(); ctx.arc(cx, cy + 1, 24, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
-    ctx.fillStyle = "#15203e";
-    rounded(cx - 14, cy + 12, 10, 11, 3);
-    rounded(cx + 4, cy + 12, 10, 11, 3);
-    ctx.fillStyle = "#15203e";
-    rounded(cx - 23, cy - 9, 10, 25, 4);
+
+    ctx.save();
+    ctx.translate(cx, cy);
     ctx.fillStyle = color;
-    rounded(cx - 20, cy - 6, 8, 19, 3);
-    ctx.strokeStyle = "#15203e";
+    ctx.strokeStyle = "#1d223f";
     ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(cx, cy - 16); ctx.lineTo(cx, cy - 24); ctx.stroke();
-    ctx.fillStyle = "#ffe35b";
-    ctx.beginPath(); ctx.arc(cx, cy - 25, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = color;
-    rounded(cx - 17, cy - 18, 34, 36, 11);
-    ctx.strokeStyle = "#15203e";
-    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 17, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = "#172848";
-    rounded(cx - 14, cy - 9, 28, 16, 7);
-    ctx.fillStyle = "#a8eeff";
-    rounded(cx - 11, cy - 7, 22, 11, 5);
-    ctx.fillStyle = "#ffffffcc";
-    rounded(cx - 8, cy - 5, 10, 3, 2);
-    ctx.fillStyle = "#fff7d2";
-    ctx.beginPath(); ctx.arc(cx, cy + 11, 2.5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = "#f4d8a6";
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 12, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#d95f4b";
+    ctx.beginPath();
+    ctx.ellipse(-11, -2, 9, 6, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(11, -2, 9, 6, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#fbb59d";
+    ctx.beginPath();
+    ctx.ellipse(-13, -3, 4, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(13, -3, 4, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#1b2140";
+    ctx.beginPath();
+    ctx.arc(-5, -2, 1.8, 0, Math.PI * 2);
+    ctx.arc(5, -2, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#1b2140";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-12, 8); ctx.lineTo(-14, 16);
+    ctx.moveTo(-6, 9); ctx.lineTo(-9, 17);
+    ctx.moveTo(6, 9); ctx.lineTo(9, 17);
+    ctx.moveTo(12, 8); ctx.lineTo(14, 16);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(-9, 12); ctx.lineTo(-17, 19);
+    ctx.moveTo(9, 12); ctx.lineTo(17, 19);
+    ctx.stroke();
+
+    ctx.restore();
 
     const label = String(player.name || "Jugador").slice(0, 10);
     ctx.font = "700 10px 'Space Mono', monospace";
